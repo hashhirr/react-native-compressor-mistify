@@ -132,14 +132,22 @@ object ImageCompressor {
       return stream
     }
 
-    fun manualCompressImage(imagePath: String?, options: ImageCompressorOptions, reactContext: ReactApplicationContext?): String? {
-        val image = if (options.input === ImageCompressorOptions.InputType.base64) decodeImage(imagePath) else loadImage(imagePath)
-        val resizedImage = resize(image, options.maxWidth, options.maxHeight)
-        val imageDataByteArrayOutputStream = compress(resizedImage, options.output, options.quality,options.disablePngTransparency)
-        val isBase64 = options.returnableOutputType === ImageCompressorOptions.ReturnableOutputType.base64
-        return encodeImage(imageDataByteArrayOutputStream, isBase64, options.output.toString(),imagePath, reactContext)
+  fun manualCompressImage(imagePath: String?, options: ImageCompressorOptions, reactContext: ReactApplicationContext?): String? {
+    val image = if (options.input === ImageCompressorOptions.InputType.base64) decodeImage(imagePath) else loadImage(imagePath)
+    val resizedImage = resize(image, options.maxWidth, options.maxHeight)
+    val isBase64 = options.returnableOutputType === ImageCompressorOptions.ReturnableOutputType.base64
+    val uri = Uri.parse(imagePath)
+    val imagePathNew = uri.path
+    var scaledBitmap: Bitmap? = correctImageOrientation(resizedImage, imagePathNew)
+    val imageDataByteArrayOutputStream = compress(scaledBitmap, options.output, options.quality, options.disablePngTransparency)
+    val compressedImagePath = encodeImage(imageDataByteArrayOutputStream, isBase64, options.output.toString(), imagePath, reactContext)
+    if (isCompressedSizeLessThanActualFile(imagePath!!, compressedImagePath)) {
+        return compressedImagePath
+    } else {
+        MediaCache.deleteFile(compressedImagePath!!)
+        return slashifyFilePath(imagePath)
     }
-
+} 
   fun isCompressedSizeLessThanActualFile(sourceFileUrl: String,compressedFileUrl: String?): Boolean {
     try {
       val sourceUri = Uri.parse(sourceFileUrl)
